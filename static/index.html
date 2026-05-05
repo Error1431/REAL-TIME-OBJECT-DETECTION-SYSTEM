@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YOLOv8 V2 Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { background-color: #0d1117; color: #c9d1d9; }
+        .panel { background-color: #161b22; border: 1px solid #30363d; }
+    </style>
+</head>
+<body class="min-h-screen text-gray-300 font-sans p-6">
+    <div class="max-w-7xl mx-auto space-y-6">
+        
+        <!-- Header -->
+        <header class="flex justify-between items-end border-b border-gray-700 pb-4">
+            <div>
+                <h1 class="text-3xl font-bold tracking-tight text-white">YOLOv8 Dashboard</h1>
+                <p class="text-gray-400 mt-1">Real-time decoupled ByteTrack inference layer</p>
+            </div>
+            <div class="flex items-center space-x-2">
+                <span class="relative flex h-3 w-3">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                </span>
+                <span class="text-sm font-semibold text-emerald-500">SYSTEM ONLINE</span>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="grid grid-cols-1 xl:grid-cols-4 gap-6">
+            
+            <!-- Video Feed & Chart Column -->
+            <div class="xl:col-span-3 space-y-6">
+                <!-- Video Player -->
+                <div class="panel rounded-xl overflow-hidden shadow-xl aspect-video flex items-center justify-center bg-black">
+                    <img id="video-stream" src="/video_feed" alt="Live Feed Offline" class="w-full h-full object-contain" onerror="this.src=''; this.alt='Stream disconnected or starting up...';">
+                </div>
+                
+                <!-- Analytics Chart -->
+                <div class="panel rounded-xl p-5 shadow-xl">
+                    <h2 class="text-lg font-semibold text-white mb-2">Foot Traffic Timeline (Last 60 mins)</h2>
+                    <div class="relative h-64 w-full">
+                        <canvas id="analyticsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Side Panel: Stats -->
+            <div class="xl:col-span-1 flex flex-col space-y-6">
+                
+                <!-- Metrics Card -->
+                <div class="panel p-5 rounded-xl">
+                    <h2 class="text-lg font-semibold text-white mb-4 border-b border-gray-700 pb-2">Live Telemetry</h2>
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-400">Tracker FPS</span>
+                            <span id="fps-val" class="font-mono text-xl font-bold text-amber-400">0.0</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-400">Active Objects</span>
+                            <span id="track-count-val" class="font-mono text-xl font-bold text-indigo-400">0</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-400">Total Entries (Left → Right)</span>
+                            <span id="entries-val" class="font-mono text-xl font-bold text-emerald-400">0</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-400">Total Exits (Right → Left)</span>
+                            <span id="exits-val" class="font-mono text-xl font-bold text-rose-400">0</span>
+                        </div>
+                        <div class="flex justify-between items-center border-t border-gray-700 pt-2 mt-2">
+                            <span class="text-sm text-gray-400">Skip Frames</span>
+                            <span id="skip-val" class="font-mono text-lg font-bold text-gray-200">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Controls Card -->
+                <div class="panel p-5 rounded-xl">
+                    <h2 class="text-lg font-semibold text-white mb-4 border-b border-gray-700 pb-2">Parameters</h2>
+                    <form id="settings-form" class="space-y-4">
+                        
+                        <!-- Source Input -->
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">Video Source</label>
+                            <div class="flex">
+                                <input type="text" id="video-source" placeholder="0 or rtsp://..." class="w-full bg-gray-800 text-gray-200 border border-gray-600 rounded-l p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                                <button type="button" id="btn-update-source" class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-r px-3 text-sm font-semibold transition-colors">SET</button>
+                            </div>
+                        </div>
+
+                        <!-- Class Filter -->
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">Filter Classes (comma-separated)</label>
+                            <div class="flex">
+                                <input type="text" id="class-filters" placeholder="e.g. person, car" class="w-full bg-gray-800 text-gray-200 border border-gray-600 rounded-l p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                                <button type="button" id="btn-update-filter" class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-r px-3 text-sm font-semibold transition-colors">SET</button>
+                            </div>
+                        </div>
+
+                        <!-- Confidence Slider -->
+                        <div>
+                            <label class="flex justify-between text-sm text-gray-300 mb-1">
+                                Confidence
+                                <span id="conf-display" class="text-gray-400">0.40</span>
+                            </label>
+                            <input type="range" id="confidence" min="0.1" max="0.9" step="0.05" value="0.4" 
+                                class="w-full accent-indigo-500 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+                        </div>
+
+                        <!-- Image Size -->
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">Inference Res (imgsz)</label>
+                            <select id="imgsz" class="w-full bg-gray-800 text-gray-200 border border-gray-600 rounded p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                                <option value="320">320 (Fastest)</option>
+                                <option value="480" selected>480 (Balanced)</option>
+                                <option value="640">640 (High Acc)</option>
+                            </select>
+                        </div>
+
+                        <!-- Skipped Frames -->
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">Frame Skipping</label>
+                            <select id="skip-frames" class="w-full bg-gray-800 text-gray-200 border border-gray-600 rounded p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                                <option value="0">0 (Process every frame)</option>
+                                <option value="1">1 (Skip every other frame)</option>
+                                <option value="2">2 (Max speed)</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Inject logic -->
+    <script src="/static/main.js"></script>
+</body>
+</html>
